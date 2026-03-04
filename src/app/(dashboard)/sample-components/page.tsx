@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, Terminal, Mail, Lock, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { AlertCircle, Terminal, Mail, Lock, ArrowUpRight, ArrowDownRight, PlusCircle, ArrowRight, Trash2, Download, Eye, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SampleComponentsPage() {
@@ -212,12 +212,12 @@ export default function SampleComponentsPage() {
                             </CardHeader>
                             <CardContent className="px-4 sm:px-6">
                                 <div className="flex flex-wrap gap-4 mb-8 border-b pb-8">
-                                    <Button variant="default">Default Button</Button>
-                                    <Button variant="secondary">Secondary</Button>
-                                    <Button variant="destructive">Destructive action</Button>
-                                    <Button variant="outline">Outline style</Button>
-                                    <Button variant="ghost">Ghost hover</Button>
-                                    <Button variant="link">Link button</Button>
+                                    <Button variant="outline"><PlusCircle className="w-4 h-4" /> Create</Button>
+                                    <Button variant="default">Get started <ArrowRight className="w-4 h-4" /></Button>
+                                    <Button variant="destructive"><Trash2 className="w-4 h-4" /> Delete</Button>
+                                    <Button variant="secondary"><Download className="w-4 h-4" /> Download</Button>
+                                    <Button variant="ghost"><Eye className="w-4 h-4" /> Preview</Button>
+                                    <Button variant="link"><ExternalLink className="w-4 h-4" /> View docs</Button>
                                 </div>
 
                                 <div className="space-y-4">

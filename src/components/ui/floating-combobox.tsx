@@ -68,11 +68,11 @@ export function FloatingCombobox({
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
                         <Button
-                            variant="default"
+                            variant="ghost"
                             role="combobox"
                             aria-expanded={open}
                             className={cn(
-                                "w-full justify-start bg-transparent hover:bg-transparent text-gray-900 dark:text-gray-100 border-0 ring-0 focus:ring-0 shadow-none outline-none font-medium !pl-4 !pr-4 pt-7 pb-2.5 h-[58px] relative text-left rounded-xl transition-all",
+                                "w-full justify-start bg-transparent hover:bg-transparent text-gray-900 dark:text-gray-100 border-0 ring-0 focus:ring-0 shadow-none outline-none font-medium !pl-4 !pr-4 pt-7 pb-2.5 h-[58px] relative text-left rounded-xl transition-all active:scale-100",
                                 valid && "!pr-12"
                             )}
                         >

@@ -12,7 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/providers/theme-provider";
 
 interface UserData {
     id: string;
@@ -112,74 +112,66 @@ export function Header() {
             </button>
 
             {/* Theme Toggle */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button className="w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-gray-400 outline-none focus:ring-2 focus:ring-blue-500/20">
-                        {mounted && theme === "dark" ? <Moon className="w-4 h-4 text-indigo-400" /> : mounted && theme === "light" ? <Sun className="w-4 h-4 text-amber-500" /> : <Laptop className="w-4 h-4" />}
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36 rounded-xl shadow-xl border-gray-100 p-1">
-                    <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg" onClick={() => setTheme("light")}>
-                        <Sun className="w-3.5 h-3.5" /> Light
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg" onClick={() => setTheme("dark")}>
-                        <Moon className="w-3.5 h-3.5" /> Dark
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg" onClick={() => setTheme("system")}>
-                        <Laptop className="w-3.5 h-3.5" /> System
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Theme Toggle */}
+            <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-gray-400 outline-none focus:ring-2 focus:ring-blue-500/20"
+                title="Toggle theme"
+                suppressHydrationWarning
+            >
+                {mounted && theme === "dark" ? (
+                    <Sun className="w-4 h-4 text-amber-500" />
+                ) : (
+                    <Moon className="w-4 h-4 text-indigo-400" />
+                )}
+            </button>
 
             {/* Avatar */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2.5 pl-3 border-l border-gray-100 dark:border-white/10 cursor-pointer outline-none hover:bg-gray-50 dark:hover:bg-white/5 py-1.5 px-2 rounded-xl transition-all" suppressHydrationWarning>
+                    <button className="group flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 ml-1 border border-transparent hover:border-gray-200 dark:hover:border-white/10 cursor-pointer outline-none bg-transparent hover:bg-gray-50 dark:hover:bg-white/5 rounded-full transition-all focus:ring-2 focus:ring-blue-500/20 data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-white/10 data-[state=open]:border-gray-200 dark:data-[state=open]:border-white/10" suppressHydrationWarning>
                         {user?.avatarUrl ? (
                             <img
                                 src={user.avatarUrl}
-                                className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-[#1a2236] shadow-sm"
+                                className="w-8 h-8 rounded-full object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                                 alt="User"
                             />
                         ) : (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold ring-2 ring-white dark:ring-[#1a2236] shadow-sm">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shadow-sm ring-1 ring-black/5 dark:ring-white/10">
                                 {user?.name ? user.name.substring(0, 2).toUpperCase() : "US"}
                             </div>
                         )}
                         <div className="hidden sm:flex flex-col items-start justify-center">
-                            <span className="block text-xs font-semibold text-gray-700 dark:text-gray-200 leading-tight">{user?.name || "Loading..."}</span>
-                            <span className="block text-[10px] text-gray-400 font-medium leading-tight">{user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : ""}</span>
+                            <span className="block text-xs font-bold text-gray-700 dark:text-gray-200 leading-tight">{user?.name || "Loading..."}</span>
+                            <span className="block text-[10px] text-gray-500 font-medium leading-tight">{user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : ""}</span>
                         </div>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-0.5 transition-transform duration-200" />
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-0.5 transition-transform duration-300 group-data-[state=open]:rotate-180" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 p-2 mt-2 bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-xl">
-                    <DropdownMenuLabel className="font-normal p-3 bg-gray-50/50 dark:bg-white/[0.02] rounded-xl mb-2">
-                        <div className="flex items-center gap-3">
+                <DropdownMenuContent align="end" className="w-[280px] rounded-2xl shadow-xl shadow-blue-900/5 dark:shadow-black/40 border border-gray-100 dark:border-white/10 p-2 mt-2 bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-xl">
+                    <DropdownMenuLabel className="font-normal p-3 bg-gradient-to-br from-gray-50/80 to-transparent dark:from-white/[0.03] dark:to-transparent rounded-xl mb-2 border border-gray-50 dark:border-white/[0.02]">
+                        <div className="flex items-center gap-3.5">
                             {user?.avatarUrl ? (
-                                <img src={user.avatarUrl} className="w-10 h-10 rounded-full object-cover shadow-sm" alt="User" />
+                                <img src={user.avatarUrl} className="w-11 h-11 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-[#1e293b]" alt="User" />
                             ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white dark:ring-[#1e293b]">
                                     {user?.name ? user.name.substring(0, 2).toUpperCase() : "US"}
                                 </div>
                             )}
                             <div className="flex flex-col space-y-0.5 overflow-hidden">
-                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{user?.name}</p>
-                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                                <p className="text-[13px] font-bold text-gray-900 dark:text-gray-50 truncate tracking-tight">{user?.name}</p>
+                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                             </div>
                         </div>
                     </DropdownMenuLabel>
-                    <DropdownMenuItem className="cursor-pointer gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-white/5 focus:bg-gray-100 dark:focus:bg-white/5" onClick={() => router.push("/profile")}>
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                            <UserIcon className="h-4 w-4" />
-                        </div>
-                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">Edit Profile</span>
+                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-white/[0.05] mx-2 mb-2" />
+                    <DropdownMenuItem className="cursor-pointer gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-gray-50 dark:hover:bg-white/5 focus:bg-gray-50 dark:focus:bg-white/5 group" onClick={() => router.push("/profile")}>
+                        <UserIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                        <span className="font-medium text-[13px] text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">Edit Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer gap-3 px-3 py-2.5 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:text-red-700 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-500/10 mt-1" onClick={handleLogout}>
-                        <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400">
-                            <LogOut className="h-4 w-4" />
-                        </div>
-                        <span className="font-medium text-sm">Log out</span>
+                    <DropdownMenuItem className="cursor-pointer gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:bg-red-50 dark:focus:bg-red-500/10 mt-1" onClick={handleLogout}>
+                        <LogOut className="h-4 w-4 opacity-80" />
+                        <span className="font-medium text-[13px]">Log out</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
