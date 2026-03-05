@@ -13,6 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/providers/theme-provider";
+import { TokenSettingsModal } from "@/components/layout/token-settings-modal";
 
 interface UserData {
     id: string;
@@ -97,19 +98,22 @@ export function Header() {
             <div className="flex-1"></div>
 
             {/* Search */}
-            <div className="hidden md:flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 w-44">
+            {/* <div className="hidden md:flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 w-44">
                 <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 <input
                     placeholder="Cari…"
                     className="bg-transparent text-xs text-gray-600 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none w-full"
                 />
-            </div>
+            </div> */}
 
             {/* Notif */}
-            <button className="relative w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-gray-400">
+            {/* <button className="relative w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-gray-400">
                 <Bell className="w-4 h-4" />
                 <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-            </button>
+            </button> */}
+
+            {/* Token Settings */}
+            {mounted && <TokenSettingsModal />}
 
             {/* Theme Toggle */}
             {/* Theme Toggle */}

@@ -279,6 +279,11 @@ export function DatePicker({
     error
 }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handlePrevDay = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -324,32 +329,34 @@ export function DatePicker({
                 </Button>
             )}
 
-            <Popover open={isOpen} onOpenChange={setIsOpen}>
-                <PopoverTrigger asChild>
-                    <div className={cn(showNavigation ? "flex-1" : "w-full")}>
-                        <FloatingTrigger
-                            label={label}
-                            value={displayValue}
-                            placeholder={placeholder}
-                            disabled={disabled}
-                            isOpen={isOpen}
-                            onClick={() => setIsOpen(true)}
-                            error={error}
+            {mounted && (
+                <Popover open={isOpen} onOpenChange={setIsOpen}>
+                    <PopoverTrigger asChild>
+                        <div className={cn(showNavigation ? "flex-1" : "w-full")}>
+                            <FloatingTrigger
+                                label={label}
+                                value={displayValue}
+                                placeholder={placeholder}
+                                disabled={disabled}
+                                isOpen={isOpen}
+                                onClick={() => setIsOpen(true)}
+                                error={error}
+                            />
+                        </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 border-none shadow-xl rounded-2xl" align="center">
+                        <CustomCalendar
+                            date={date}
+                            onSelect={(d) => {
+                                setDate(d);
+                                setIsOpen(false);
+                            }}
+                            minDate={minDate}
+                            maxDate={maxDate}
                         />
-                    </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 border-none shadow-xl rounded-2xl" align="center">
-                    <CustomCalendar
-                        date={date}
-                        onSelect={(d) => {
-                            setDate(d);
-                            setIsOpen(false);
-                        }}
-                        minDate={minDate}
-                        maxDate={maxDate}
-                    />
-                </PopoverContent>
-            </Popover>
+                    </PopoverContent>
+                </Popover>
+            )}
 
             {showNavigation && (
                 <Button
@@ -380,6 +387,11 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selecting, setSelecting] = useState<"from" | "to">("from");
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleSelect = (d: Date) => {
         if (selecting === "from") {
@@ -405,36 +417,38 @@ export function DateRangePicker({
 
     return (
         <div className={cn("flex items-center", className)}>
-            <Popover open={isOpen} onOpenChange={(open) => {
-                setIsOpen(open);
-                if (open) setSelecting("from");
-            }}>
-                <PopoverTrigger asChild>
-                    <div className="w-full">
-                        <FloatingTrigger
-                            label={label}
-                            value={displayValue}
-                            placeholder={placeholder}
-                            disabled={disabled}
-                            isOpen={isOpen}
+            {mounted && (
+                <Popover open={isOpen} onOpenChange={(open) => {
+                    setIsOpen(open);
+                    if (open) setSelecting("from");
+                }}>
+                    <PopoverTrigger asChild>
+                        <div className="w-full">
+                            <FloatingTrigger
+                                label={label}
+                                value={displayValue}
+                                placeholder={placeholder}
+                                disabled={disabled}
+                                isOpen={isOpen}
+                            />
+                        </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 border-none shadow-xl rounded-2xl" align="center">
+                        <div className="px-4 pt-3 pb-1">
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                {selecting === "from" ? "Select start date" : "Select end date"}
+                            </p>
+                        </div>
+                        <CustomCalendar
+                            date={selecting === "from" ? from : to}
+                            onSelect={handleSelect}
+                            rangeFrom={from}
+                            rangeTo={to}
+                            isRangeMode={true}
                         />
-                    </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 border-none shadow-xl rounded-2xl" align="center">
-                    <div className="px-4 pt-3 pb-1">
-                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                            {selecting === "from" ? "Select start date" : "Select end date"}
-                        </p>
-                    </div>
-                    <CustomCalendar
-                        date={selecting === "from" ? from : to}
-                        onSelect={handleSelect}
-                        rangeFrom={from}
-                        rangeTo={to}
-                        isRangeMode={true}
-                    />
-                </PopoverContent>
-            </Popover>
+                    </PopoverContent>
+                </Popover>
+            )}
         </div>
     );
 }

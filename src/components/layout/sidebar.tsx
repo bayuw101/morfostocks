@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
     LayoutDashboard,
-    BookOpen,
-    Users,
-    ClipboardList,
-    Award,
     Settings,
-    GraduationCap,
-    FileQuestion,
     Database,
+    List,
+    BarChart2,
+    TrendingUp,
+    Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,63 +56,20 @@ const NavItem = ({ href, icon, active, tooltip, hasBadge }: NavItemProps) => {
 };
 
 export function Sidebar() {
-    const [userRole, setUserRole] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetch("/api/auth/me")
-            .then(res => {
-                const contentType = res.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    return res.json();
-                }
-                return null;
-            })
-            .then(data => {
-                if (data?.user) setUserRole(data.user.role);
-            })
-            .catch(() => { });
-    }, []);
-
     const renderNavItems = () => {
-        if (!userRole) {
-            return <NavItem href="/" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Loading..." />;
-        }
+        return (
+            <>
+                <NavItem href="/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Dashboard" />
+                <NavItem href="/analysis/technical" icon={<BarChart2 size={18} strokeWidth={1.9} />} tooltip="Technical Analysis" />
+                <NavItem href="/analysis/fundamental" icon={<TrendingUp size={18} strokeWidth={1.9} />} tooltip="Fundamental Analysis" />
 
-        switch (userRole) {
-            case "ADMIN":
-                return (
-                    <>
-                        <NavItem href="/admin" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Dasbor" />
-                        <NavItem href="/admin/accounts" icon={<Users size={18} strokeWidth={1.9} />} tooltip="Akun" />
-                        <NavItem href="/admin/classes" icon={<BookOpen size={18} strokeWidth={1.9} />} tooltip="Kelas" />
-                        <NavItem href="/admin/subjects" icon={<ClipboardList size={18} strokeWidth={1.9} />} tooltip="Mata Pelajaran" />
-                        <NavItem href="/quizzes" icon={<FileQuestion size={18} strokeWidth={1.9} />} tooltip="Asesmen" />
-                        <NavItem href="/question-bank" icon={<Database size={18} strokeWidth={1.9} />} tooltip="Bank Soal" />
-                    </>
-                );
-            case "TEACHER":
-                return (
-                    <>
-                        <NavItem href="/teacher" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Dasbor" />
-                        <NavItem href="/teacher/classes" icon={<BookOpen size={18} strokeWidth={1.9} />} tooltip="Kelas Saya" />
-                        <NavItem href="/teacher/assignments" icon={<ClipboardList size={18} strokeWidth={1.9} />} tooltip="Tugas" />
-                        <NavItem href="/quizzes" icon={<FileQuestion size={18} strokeWidth={1.9} />} tooltip="Asesmen" />
-                        <NavItem href="/question-bank" icon={<Database size={18} strokeWidth={1.9} />} tooltip="Bank Soal" />
-                    </>
-                );
-            case "STUDENT":
-                return (
-                    <>
-                        <NavItem href="/student" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Dasbor" />
-                        <NavItem href="/student/courses" icon={<BookOpen size={18} strokeWidth={1.9} />} tooltip="Kursus" />
-                        <NavItem href="/student/assignments" icon={<ClipboardList size={18} strokeWidth={1.9} />} tooltip="Tugas" />
-                        <NavItem href="/student/quizzes" icon={<FileQuestion size={18} strokeWidth={1.9} />} tooltip="Asesmen" />
-                        <NavItem href="/student/grades" icon={<Award size={18} strokeWidth={1.9} />} tooltip="Nilai" />
-                    </>
-                );
-            default:
-                return null;
-        }
+                <div className="w-6 my-2 border-t border-white/10 mx-auto"></div>
+
+                <NavItem href="/collectors" icon={<Database size={18} strokeWidth={1.9} />} tooltip="Collectors" />
+                <NavItem href="/list-stock" icon={<List size={18} strokeWidth={1.9} />} tooltip="List Emiten" />
+                <NavItem href="/list-broker" icon={<Users size={18} strokeWidth={1.9} />} tooltip="List Broker" />
+            </>
+        );
     };
 
     return (
@@ -122,7 +77,7 @@ export function Sidebar() {
             {/* Logo */}
             <div className="mb-7">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-500">
-                    <GraduationCap className="w-5 h-5 text-white" />
+                    <TrendingUp className="w-5 h-5 text-white" />
                 </div>
             </div>
 

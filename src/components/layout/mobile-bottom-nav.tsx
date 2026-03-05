@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
     LayoutDashboard,
-    FileQuestion,
     Database,
-    BookOpen,
-    Award,
+    BarChart2,
+    TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -62,101 +61,32 @@ function NavButton({ href, icon, activeIcon, label }: MobileNavItem) {
 }
 
 export function MobileBottomNav() {
-    const [userRole, setUserRole] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetch("/api/auth/me")
-            .then((res) => {
-                const contentType = res.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    return res.json();
-                }
-                return null;
-            })
-            .then((data) => {
-                if (data?.user) setUserRole(data.user.role);
-            })
-            .catch(() => { });
-    }, []);
-
-    const getNavItems = (): MobileNavItem[] => {
-        switch (userRole) {
-            case "ADMIN":
-                return [
-                    {
-                        href: "/admin",
-                        icon: <LayoutDashboard size={20} strokeWidth={1.5} />,
-                        activeIcon: <LayoutDashboard size={20} strokeWidth={2.2} />,
-                        label: "Home",
-                    },
-                    {
-                        href: "/quizzes",
-                        icon: <FileQuestion size={20} strokeWidth={1.5} />,
-                        activeIcon: <FileQuestion size={20} strokeWidth={2.2} />,
-                        label: "Quizzes",
-                    },
-                    {
-                        href: "/question-bank",
-                        icon: <Database size={20} strokeWidth={1.5} />,
-                        activeIcon: <Database size={20} strokeWidth={2.2} />,
-                        label: "Bank",
-                    },
-                ];
-            case "TEACHER":
-                return [
-                    {
-                        href: "/teacher",
-                        icon: <LayoutDashboard size={20} strokeWidth={1.5} />,
-                        activeIcon: <LayoutDashboard size={20} strokeWidth={2.2} />,
-                        label: "Home",
-                    },
-                    {
-                        href: "/quizzes",
-                        icon: <FileQuestion size={20} strokeWidth={1.5} />,
-                        activeIcon: <FileQuestion size={20} strokeWidth={2.2} />,
-                        label: "Quizzes",
-                    },
-                    {
-                        href: "/question-bank",
-                        icon: <Database size={20} strokeWidth={1.5} />,
-                        activeIcon: <Database size={20} strokeWidth={2.2} />,
-                        label: "Bank",
-                    },
-                ];
-            case "STUDENT":
-                return [
-                    {
-                        href: "/student",
-                        icon: <LayoutDashboard size={20} strokeWidth={1.5} />,
-                        activeIcon: <LayoutDashboard size={20} strokeWidth={2.2} />,
-                        label: "Home",
-                    },
-                    {
-                        href: "/student/quizzes",
-                        icon: <FileQuestion size={20} strokeWidth={1.5} />,
-                        activeIcon: <FileQuestion size={20} strokeWidth={2.2} />,
-                        label: "Quiz",
-                    },
-                    {
-                        href: "/student/grades",
-                        icon: <Award size={20} strokeWidth={1.5} />,
-                        activeIcon: <Award size={20} strokeWidth={2.2} />,
-                        label: "Grades",
-                    },
-                ];
-            default:
-                return [
-                    {
-                        href: "/",
-                        icon: <LayoutDashboard size={20} strokeWidth={1.5} />,
-                        activeIcon: <LayoutDashboard size={20} strokeWidth={2.2} />,
-                        label: "Home",
-                    },
-                ];
-        }
-    };
-
-    const navItems = getNavItems();
+    const navItems: MobileNavItem[] = [
+        {
+            href: "/dashboard",
+            icon: <LayoutDashboard size={20} strokeWidth={1.5} />,
+            activeIcon: <LayoutDashboard size={20} strokeWidth={2.2} />,
+            label: "Home",
+        },
+        {
+            href: "/analysis/technical",
+            icon: <BarChart2 size={20} strokeWidth={1.5} />,
+            activeIcon: <BarChart2 size={20} strokeWidth={2.2} />,
+            label: "Technical",
+        },
+        {
+            href: "/analysis/fundamental",
+            icon: <TrendingUp size={20} strokeWidth={1.5} />,
+            activeIcon: <TrendingUp size={20} strokeWidth={2.2} />,
+            label: "Fundamental",
+        },
+        {
+            href: "/collectors",
+            icon: <Database size={20} strokeWidth={1.5} />,
+            activeIcon: <Database size={20} strokeWidth={2.2} />,
+            label: "Collectors",
+        },
+    ];
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-[max(8px,env(safe-area-inset-bottom))] px-5 md:hidden pointer-events-none">

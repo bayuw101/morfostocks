@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Stock {
+  symbol       String        @id
+  ohlc         OHLC[]
+  bidOffer          BidOffer[]
+  fundamentals      Fundamental[]
+  ownerships        Ownership[]
+  ownershipChanges  OwnershipChange[]
+}
+
+model OHLC {
+  id          Int      @id @default(autoincrement())
+  stockSymbol String
+  stock       Stock    @relation(fields: [stockSymbol], references: [symbol])
+  date        DateTime
+  open        Float
+  high        Float
+  low         Float
+  close       Float
+  volume      BigInt
+  value       BigInt
+  frequency   Int
+  foreignBuy  BigInt
+  foreignSell BigInt
+  netForeign  BigInt
+
+  @@unique([stockSymbol, date])
+  @@index([date])
+}
+
+model Fundamental {
+  id          Int      @id @default(autoincrement())
+  stockSymbol String   @unique
+  stock       Stock    @relation(fields: [stockSymbol], references: [symbol])
+  data        Json
+  updatedAt   DateTime @updatedAt
+}
+
+model Broker {
+  code         String              @id
+  name         String
+  permission   String?
+  group        String?
+  summaries    BrokerSummary[]
+  transactions BrokerTransaction[]
+}
+
+model BrokerSummary {
+  id             Int      @id @default(autoincrement())
+  brokerCode     String
+  broker         Broker   @relation(fields: [brokerCode], references: [code])
+  date           DateTime
+  investorType   String   @default("Total") // "Total" (from daily) or "Foreign" (from foreign/daily)
+  value          BigInt
+  volume         BigInt
+  frequency      Int?
+  bandarDetector Json
+
+  @@unique([brokerCode, date, investorType])
+}
+
+model BrokerTransaction {
+  id           Int      @id @default(autoincrement())
+  brokerCode   String
+  broker       Broker   @relation(fields: [brokerCode], references: [code])
+  date         DateTime
+  stockSymbol  String
+  investorType String   @default("Total")
+  action       String
+  volume       BigInt
+  value        BigInt
+  avgPrice     Float
+
+  @@index([brokerCode])
+  @@index([stockSymbol])
+  @@index([date])
+}
+
+model BidOffer {
+  id          Int      @id @default(autoincrement())
+  stockSymbol String
+  stock       Stock    @relation(fields: [stockSymbol], references: [symbol])
+  date        DateTime
+
+  tiers Json // Stores T1..T10 detailed data (active/passive, vol/val)
+
+  @@unique([stockSymbol, date])
+  @@index([date])
+}
+
+model Ownership {
+  id           Int      @id @default(autoincrement())
+  date         DateTime
+  stockSymbol  String
+  stock        Stock    @relation(fields: [stockSymbol], references: [symbol])
+  investorName String
+  investorType String
+  localForeign String // "L" or "A"
+  nationality  String
+  domicile     String
+  scrip        BigInt
+  scripless    BigInt
+  total        BigInt
+  percentage   Float
+
+  @@unique([date, stockSymbol, investorName])
+  @@index([stockSymbol])
+  @@index([date])
+}
+
+model OwnershipChange {
+  id             Int      @id @default(autoincrement())
+  date           DateTime
+  stockSymbol    String
+  stock          Stock    @relation(fields: [stockSymbol], references: [symbol])
+  investorName   String
+  previousTotal  BigInt
+  newTotal       BigInt
+  changeTotal    BigInt
+  previousScrip     BigInt   @default(0)
+  newScrip          BigInt   @default(0)
+  changeScrip       BigInt   @default(0)
+  previousScripless BigInt   @default(0)
+  newScripless      BigInt   @default(0)
+  changeScripless   BigInt   @default(0)
+  previousPct    Float
+  newPct         Float
+  changePct      Float
+  createdAt      DateTime @default(now())
+
+  @@index([stockSymbol])
+  @@index([date])
+}
+
+model OwnershipSyncMeta {
+  id             Int      @id @default(autoincrement())
+  lastDate       DateTime
+  lastPdfName    String   @unique
+  updatedAt      DateTime @updatedAt
+}
