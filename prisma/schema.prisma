@@ -17,6 +17,17 @@ model Stock {
   fundamentals      Fundamental[]
   ownerships        Ownership[]
   ownershipChanges  OwnershipChange[]
+  liner             StockLiner?
+}
+
+model StockLiner {
+  id               Int      @id @default(autoincrement())
+  stockSymbol      String   @unique
+  stock            Stock    @relation(fields: [stockSymbol], references: [symbol])
+  liner            String   // "first_liner" | "second_liner" | "third_liner"
+  avgDailyTurnover BigInt
+  daysSampled      Int
+  updatedAt        DateTime @updatedAt
 }
 
 model OHLC {

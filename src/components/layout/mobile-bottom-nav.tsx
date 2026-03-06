@@ -6,6 +6,7 @@ import {
     Database,
     BarChart2,
     TrendingUp,
+    Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -79,6 +80,12 @@ export function MobileBottomNav() {
             icon: <TrendingUp size={20} strokeWidth={1.5} />,
             activeIcon: <TrendingUp size={20} strokeWidth={2.2} />,
             label: "Fundamental",
+        },
+        {
+            href: "/analysis/ownership",
+            icon: <Users size={20} strokeWidth={1.5} />,
+            activeIcon: <Users size={20} strokeWidth={2.2} />,
+            label: "Ownership",
         },
         {
             href: "/collectors",
