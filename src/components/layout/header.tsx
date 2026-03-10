@@ -63,6 +63,12 @@ export function Header() {
         return { href, title, isLast };
     });
 
+    // Hide header on full-screen board pages
+    const hiddenPaths = ['/analysis/net-pressure', '/analysis/technical/net-pressure-v1', '/analysis/technical/net-pressure-v2'];
+    if (hiddenPaths.some(p => pathname?.startsWith(p))) {
+        return null;
+    }
+
     return (
         <header className="flex items-center gap-3 px-3 md:px-5 py-2.5 border-b border-gray-100 dark:border-white/10 bg-white dark:bg-[#1a2236] rounded-t-none md:rounded-t-2xl shrink-0">
             {/* Breadcrumb - Truncate long IDs on mobile */}

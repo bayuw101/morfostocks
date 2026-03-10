@@ -72,13 +72,14 @@ model BrokerSummary {
   brokerCode     String
   broker         Broker   @relation(fields: [brokerCode], references: [code])
   date           DateTime
+  stockSymbol    String   @default("")
   investorType   String   @default("Total") // "Total" (from daily) or "Foreign" (from foreign/daily)
   value          BigInt
   volume         BigInt
   frequency      Int?
   bandarDetector Json
 
-  @@unique([brokerCode, date, investorType])
+  @@unique([brokerCode, date, investorType, stockSymbol])
 }
 
 model BrokerTransaction {
@@ -93,6 +94,7 @@ model BrokerTransaction {
   value        BigInt
   avgPrice     Float
 
+  @@unique([brokerCode, date, stockSymbol, investorType, action])
   @@index([brokerCode])
   @@index([stockSymbol])
   @@index([date])

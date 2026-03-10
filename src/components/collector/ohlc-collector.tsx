@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import localforage from "localforage";
-import { syncSymbolOhlcAction } from "@/lib/actions/collector-actions";
+import { syncStockLinerFromRecentOhlcAction, syncSymbolOhlcAction } from "@/lib/actions/collector-actions";
 import { getStocksAction } from "@/lib/actions/reference-actions";
 
 export default function OhlcCollector({ from, to }: { from: Date | null; to: Date | null }) {
@@ -90,6 +90,16 @@ export default function OhlcCollector({ from, to }: { from: Date | null; to: Dat
                 setProgress(Math.round((count / total) * 100));
                 // Small delay to prevent rate limit
                 await new Promise(r => setTimeout(r, 200));
+            }
+
+            setStatusText("Initializing stock liner (5-day turnover)...");
+            const linerRes = await syncStockLinerFromRecentOhlcAction();
+            if (!linerRes.ok) {
+                toast.warning(`OHLC synced, but stock liner init failed: ${linerRes.error}`);
+            } else {
+                toast.success(
+                    `Stock liner initialized (${linerRes.total} symbols): 1st ${linerRes.counts.first_liner}, 2nd ${linerRes.counts.second_liner}, 3rd ${linerRes.counts.third_liner}`
+                );
             }
 
             setStatusText("Completed.");

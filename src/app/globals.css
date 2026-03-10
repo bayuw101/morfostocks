@@ -200,6 +200,13 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Prevent 1px sub-pixel height calculation bugs */
+  html,
+  body {
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
 /* Autofill detection for FloatingInput */

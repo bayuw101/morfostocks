@@ -7,9 +7,14 @@ import { isForeignBroker } from "@/lib/foreign-brokers";
 import { getBrokerType } from "@/lib/broker-types";
 import { Toggle } from "@/components/ui/toggle";
 
+interface BrokerData {
+    lot: number;
+    value: number;
+}
+
 interface BrokerHistoryItem {
     date: string;
-    brokers: Record<string, number>;
+    brokers: Record<string, BrokerData>;
 }
 
 interface BrokerStudyProps {
@@ -18,9 +23,11 @@ interface BrokerStudyProps {
     onSelectBroker: (broker: string | null) => void;
     showForeignOnly: boolean;
     onForeignOnlyChange: (show: boolean) => void;
+    selectedDate: Date | null;
+    onSelectDate: (date: Date | null) => void;
 }
 
-export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, showForeignOnly, onForeignOnlyChange }: BrokerStudyProps) {
+export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, showForeignOnly, onForeignOnlyChange, selectedDate, onSelectDate }: BrokerStudyProps) {
     const [mounted, setMounted] = useState(false);
 
     // Determine the latest date available default
@@ -30,18 +37,10 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
         return parseISO(dates[dates.length - 1]);
     }, [brokers]);
 
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-    // Initialize on mount and update when latestDate changes
+    // Initialize on mount
     useEffect(() => {
         setMounted(true);
     }, []);
-
-    useEffect(() => {
-        if (latestDate) {
-            setSelectedDate(latestDate);
-        }
-    }, [latestDate]);
 
     // Filter data for the selected date
     const dailyData = useMemo(() => {
@@ -56,8 +55,7 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
 
         const all = Object.entries(dailyData.brokers)
             .filter(([code]) => code !== "total_net")
-            .filter(([code]) => !showForeignOnly || isForeignBroker(code))
-            .map(([code, val]) => ({ code, val }));
+            .map(([code, data]) => ({ code, val: data.value })); // Use VALUE for sidebar
 
         // Top Buyers: positive values, desc
         const b = all.filter(x => x.val > 0).sort((a, b) => b.val - a.val);
@@ -80,7 +78,7 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
                 1
             )
         };
-    }, [dailyData, showForeignOnly]);
+    }, [dailyData]); // Removed showForeignOnly dependency since data is pre-filtered
 
     const formatVal = (val: number) => {
         const absVal = Math.abs(val);
@@ -105,7 +103,7 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
                     <div className="flex-1">
                         <DatePicker
                             date={selectedDate}
-                            setDate={(d) => setSelectedDate(d)}
+                            setDate={(d) => onSelectDate(d)}
                             showNavigation={true}
                             maxDate={latestDate ? latestDate : undefined}
                             minDate={new Date("2000-01-01")}
@@ -130,6 +128,17 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
                             <div className="sticky top-0 bg-white dark:bg-[#1a2236] shadow-sm text-[10px] font-bold text-center py-2 text-emerald-600 dark:text-emerald-400 border-b border-gray-100 dark:border-white/10 z-20">
                                 BUY
                             </div>
+
+                            {/* TOTAL Row */}
+                            {dailyData && (
+                                <div className="bg-emerald-50/50 dark:bg-emerald-500/10 border-b border-gray-100 dark:border-white/10 px-1 py-1.5 flex flex-col items-center">
+                                    <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Total Buy</span>
+                                    <span className="font-mono text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                        {formatVal(totalBuy)}
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="divide-y divide-gray-50 dark:divide-white/5">
                                 {buyers.map((b) => {
                                     const type = getBrokerType(b.code);
@@ -177,6 +186,17 @@ export function BrokerStudyPanel({ brokers, selectedBroker, onSelectBroker, show
                             <div className="sticky top-0 bg-white dark:bg-[#1a2236] shadow-sm text-[10px] font-bold text-center py-2 text-rose-600 dark:text-rose-400 border-b border-gray-100 dark:border-white/10 z-20">
                                 SELL
                             </div>
+
+                            {/* TOTAL Row */}
+                            {dailyData && (
+                                <div className="bg-rose-50/50 dark:bg-rose-500/10 border-b border-gray-100 dark:border-white/10 px-1 py-1.5 flex flex-col items-center">
+                                    <span className="text-[9px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-tighter">Total Sell</span>
+                                    <span className="font-mono text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                                        {formatVal(totalSell)}
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="divide-y divide-gray-50 dark:divide-white/5">
                                 {sellers.map((s) => {
                                     const type = getBrokerType(s.code);

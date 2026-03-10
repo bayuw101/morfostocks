@@ -16,30 +16,41 @@ export default function TechnicalDetailPageClient({ params }: { params: Promise<
     const [fundamentalScores, setFundamentalScores] = useState<FundamentalScores | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [timeframe, setTimeframe] = useState<string>("150");
+    const [timeframe, setTimeframe] = useState<string>("200");
     const [showRSI, setShowRSI] = useState(false);
     const [showMACD, setShowMACD] = useState(false);
     const [showEMA, setShowEMA] = useState(false);
     const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
     const [showForeignOnly, setShowForeignOnly] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [outstandingShares, setOutstandingShares] = useState<number | null>(null);
 
     useEffect(() => {
         if (symbol) {
             setLoading(true);
             setError(null);
-            fetch(`/api/analysis/technical/${symbol}`)
+            const type = showForeignOnly ? "Foreign" : "Total";
+            fetch(`/api/analysis/technical/${symbol}?type=${type}`)
                 .then(res => res.json())
                 .then(json => {
                     if (json.error) throw new Error(json.error);
                     setChartData(json.data || []);
                     setBrokerData(json.brokers || []);
                     setFundamentalScores(json.fundamental_scores || null);
+                    setOutstandingShares(json.fundamental_data?.current_share_outstanding || null);
+
+                    // Auto-select latest date if not set
+                    if (json.brokers && json.brokers.length > 0) {
+                        const dates = json.brokers.map((b: any) => b.date).sort();
+                        const latest = parseISO(dates[dates.length - 1]);
+                        setSelectedDate(latest);
+                    }
                 })
                 .catch(err => setError(err.message))
                 .finally(() => setLoading(false));
         }
-    }, [symbol]);
+    }, [symbol, showForeignOnly]);
 
     // Fullscreen + landscape lock for mobile
     const enterFullscreen = useCallback(async () => {
@@ -192,6 +203,8 @@ export default function TechnicalDetailPageClient({ params }: { params: Promise<
                                     selectedBroker={selectedBroker}
                                     showForeignOnly={showForeignOnly}
                                     compact={true}
+                                    selectedDate={selectedDate}
+                                    outstandingShares={outstandingShares}
                                 />
                             )}
                         </div>
@@ -215,6 +228,8 @@ export default function TechnicalDetailPageClient({ params }: { params: Promise<
                                         showEMA={showEMA}
                                         selectedBroker={selectedBroker}
                                         showForeignOnly={showForeignOnly}
+                                        selectedDate={selectedDate}
+                                        outstandingShares={outstandingShares}
                                     />
                                 )}
                             </div>
@@ -230,6 +245,8 @@ export default function TechnicalDetailPageClient({ params }: { params: Promise<
                                 onSelectBroker={setSelectedBroker}
                                 showForeignOnly={showForeignOnly}
                                 onForeignOnlyChange={setShowForeignOnly}
+                                selectedDate={selectedDate}
+                                onSelectDate={setSelectedDate}
                             />
                         </div>
                         <div className="hidden lg:flex lg:flex-col lg:h-full">
@@ -239,6 +256,8 @@ export default function TechnicalDetailPageClient({ params }: { params: Promise<
                                 onSelectBroker={setSelectedBroker}
                                 showForeignOnly={showForeignOnly}
                                 onForeignOnlyChange={setShowForeignOnly}
+                                selectedDate={selectedDate}
+                                onSelectDate={setSelectedDate}
                             />
                         </div>
                     </div>
@@ -285,9 +304,14 @@ import { isForeignBroker } from "@/lib/foreign-brokers";
 import { getBrokerType } from "@/lib/broker-types";
 import { DatePicker } from "@/components/ui/date-picker";
 
+interface BrokerData {
+    lot: number;
+    value: number;
+}
+
 interface BrokerHistoryItem {
     date: string;
-    brokers: Record<string, number>;
+    brokers: Record<string, BrokerData>;
 }
 
 function BrokerChip({
@@ -348,24 +372,22 @@ function MobileBrokerStrip({
     onSelectBroker,
     showForeignOnly,
     onForeignOnlyChange,
+    selectedDate,
+    onSelectDate
 }: {
     brokers: BrokerHistoryItem[];
     selectedBroker: string | null;
     onSelectBroker: (b: string | null) => void;
     showForeignOnly: boolean;
     onForeignOnlyChange: (v: boolean) => void;
+    selectedDate: Date | null;
+    onSelectDate: (d: Date | null) => void;
 }) {
     const latestDate = useMemo(() => {
         if (!brokers || brokers.length === 0) return null;
         const dates = brokers.map(b => b.date).sort();
         return parseISO(dates[dates.length - 1]);
     }, [brokers]);
-
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-    useEffect(() => {
-        if (latestDate) setSelectedDate(latestDate);
-    }, [latestDate]);
 
     const dailyData = useMemo(() => {
         if (!brokers || !selectedDate) return null;
@@ -377,8 +399,7 @@ function MobileBrokerStrip({
         if (!dailyData) return { buyers: [], sellers: [], maxVal: 1 };
         const all = Object.entries(dailyData.brokers)
             .filter(([code]) => code !== "total_net")
-            .filter(([code]) => !showForeignOnly || isForeignBroker(code))
-            .map(([code, val]) => ({ code, val }));
+            .map(([code, data]) => ({ code, val: data.value })); // Use value for display
 
         const b = all.filter(x => x.val > 0).sort((a, b) => b.val - a.val);
         const s = all.filter(x => x.val < 0).sort((a, b) => a.val - b.val);
@@ -410,7 +431,7 @@ function MobileBrokerStrip({
                 <div className="flex-1 min-w-0">
                     <DatePicker
                         date={selectedDate}
-                        setDate={setSelectedDate}
+                        setDate={onSelectDate}
                         showNavigation={true}
                         maxDate={latestDate ?? undefined}
                         minDate={new Date("2000-01-01")}

@@ -16,6 +16,7 @@ export type FundamentalData = {
   graham_number: number;
   asset_turnover?: number;
   inventory_turnover?: number;
+  current_share_outstanding?: number;
   score?: number;
 };
 

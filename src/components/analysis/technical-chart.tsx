@@ -63,11 +63,11 @@ function calculateSmartSupport(data: ChartData[], brokers: BrokerHistoryItem[], 
 
     const supportMap: Record<string, number | null> = {};
 
-    // Create quick lookup for date -> broker value
+    // Create quick lookup for date -> broker lot
     const brokerMap = new Map<string, number>();
     brokers.forEach(b => {
         if (b.brokers[selectedBroker]) {
-            brokerMap.set(b.date, b.brokers[selectedBroker]);
+            brokerMap.set(b.date, b.brokers[selectedBroker].lot);
         }
     });
 
@@ -218,7 +218,14 @@ const CustomTooltip = (props: any) => {
                     {d.broker_accum !== null && d.broker_accum !== undefined && (
                         <>
                             <span className="text-amber-500 font-medium">Accum:</span>
-                            <span className="font-mono text-amber-500 text-right font-bold">{formatCompactNumber(d.broker_accum)}</span>
+                            <div className="text-right">
+                                <span className="font-mono text-amber-500 font-bold">{formatCompactNumber(d.broker_accum)} Lot</span>
+                                {d.outstandingShares && (
+                                    <span className="text-[10px] ml-1 text-amber-500/80 font-medium">
+                                        ({((d.broker_accum / (d.outstandingShares / 100)) * 100).toFixed(2)}%)
+                                    </span>
+                                )}
+                            </div>
                         </>
                     )}
 
@@ -280,9 +287,14 @@ function calculateEMA(data: ChartData[], period: number): number[] {
 
 
 
+interface BrokerData {
+    lot: number;
+    value: number;
+}
+
 interface BrokerHistoryItem {
     date: string;
-    brokers: Record<string, number>;
+    brokers: Record<string, BrokerData>;
 }
 // ... (Interfaces remain roughly same, skipping re-definition if not needed, but I need to insert state)
 
@@ -303,12 +315,14 @@ interface TechnicalChartProps {
     selectedBroker: string | null;
     showForeignOnly?: boolean;
     compact?: boolean; // Strip card/header, minimize margins
+    selectedDate: Date | null;
+    outstandingShares?: number | null;
 }
 
 // Define CustomTooltip props explicitly to avoid naming collision issues or scope issues
 const CustomTooltipWrapper = (props: any) => <CustomTooltip {...props} />;
 
-export function TechnicalChart({ data, symbol, brokers = [], className, mainChartHeight = "h-[300px]", timeframe, showRSI = false, showMACD = false, showEMA = false, selectedBroker, showForeignOnly = false, compact = false }: TechnicalChartProps) {
+export function TechnicalChart({ data, symbol, brokers = [], className, mainChartHeight = "h-[300px]", timeframe, showRSI = false, showMACD = false, showEMA = false, selectedBroker, showForeignOnly = false, compact = false, selectedDate, outstandingShares }: TechnicalChartProps) {
     // Interaction State
     const [boxes, setBoxes] = useState<Array<{ id: string, startPrice: number, endPrice: number, startDate: string, endDate: string }>>([]);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -427,12 +441,8 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                 dragStartRef.current = { x, y: snappedY, price: cursorPrice, date: currentDate };
                 setIsDrawing(true);
 
-                // Reset Box Style
-                if (measureBoxRef.current) {
-                    measureBoxRef.current.style.display = 'none'; // Hide until move
-                    measureBoxRef.current.style.width = '0px';
-                    measureBoxRef.current.style.height = '0px';
-                }
+                // Side effect: If we click the chart, update the selected date in the sidebar?
+                // Actually, let's keep it separate or use it to highlight.
             }
         }
         // If DRAWING, FINISH drawing
@@ -479,11 +489,11 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
         // 2. Filter broker history to these dates
         const relevantBrokerHistory = brokers.filter(b => validDates.has(b.date));
 
-        // 3. Sum up net values per broker
+        // 3. Sum up net lots per broker
         const brokerTotals: Record<string, number> = {};
         relevantBrokerHistory.forEach(day => {
-            Object.entries(day.brokers).forEach(([code, val]) => {
-                brokerTotals[code] = (brokerTotals[code] || 0) + val;
+            Object.entries(day.brokers).forEach(([code, data]) => {
+                brokerTotals[code] = (brokerTotals[code] || 0) + data.lot;
             });
         });
 
@@ -498,9 +508,9 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
     // We need to map 'net accumm' line for selected broker
     // Accum starts from 0 at the beginning of the VISIBLE period.
 
-    // Create a fast lookup map for broker data [date] -> { [broker]: value }
+    // Create a fast lookup map for broker data [date] -> { [broker]: BrokerData }
     const brokerDataMap = useMemo(() => {
-        const map = new Map<string, Record<string, number>>();
+        const map = new Map<string, Record<string, BrokerData>>();
         brokers.forEach(b => {
             map.set(b.date, b.brokers);
         });
@@ -515,6 +525,50 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
         return map;
     }, [data, brokers, selectedBroker]);
 
+    const brokerOverlayData = useMemo(() => {
+        // We use the full `data` array (which is already chronologically oldest-to-newest) 
+        // to calculate a running accumulation from the start of the fetched window.
+        // This ensures the chart line draws continuously from left to right without weird resets.
+
+        let rawData: { date: string, value: number }[] | null = null;
+
+        // Priority: Selected Broker > Foreign Only
+        if (selectedBroker && brokers) {
+            let runningAccum = 0;
+            rawData = data.map(item => {
+                const dayBrokers = brokerDataMap.get(item.date);
+                if (dayBrokers && dayBrokers[selectedBroker]) {
+                    runningAccum += dayBrokers[selectedBroker].lot;
+                }
+                return { date: item.date, value: runningAccum };
+            });
+        } else if (showForeignOnly && brokers) {
+            let runningAccum = 0;
+            rawData = data.map(item => {
+                const dayBrokers = brokerDataMap.get(item.date);
+                if (dayBrokers && dayBrokers["total_net"]) {
+                    runningAccum += dayBrokers["total_net"].lot;
+                }
+                return { date: item.date, value: runningAccum };
+            });
+        }
+
+        if (!rawData) return null; // Neither selected
+
+        // Find the minimum value in the VISIBLE timeframe (filteredData)
+        // so that the lowest point on the current chart view is exactly 0.
+        const visibleDates = new Set(filteredData.map(d => d.date));
+        const visibleValues = rawData.filter(d => visibleDates.has(d.date)).map(d => d.value);
+
+        if (visibleValues.length === 0) return rawData; // Fallback if no dates match
+
+        const minVisible = Math.min(...visibleValues);
+
+        // Normalize all data by subtracting the visible minimum
+        return rawData.map(d => ({ ...d, value: d.value - minVisible }));
+
+    }, [showForeignOnly, brokers, selectedBroker, data, brokerDataMap, filteredData]);
+
     const chartData = useMemo(() => {
         // 1. Calculate EMAs on FULL data first to ensure accuracy across timeframes
         // Use raw 'data' prop here to calculate technicals correctly
@@ -527,17 +581,14 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
             emaMap.set(d.date, { ema20: ema20[i], ema200: ema200[i] });
         });
 
-        let currentAccum = 0;
-        return filteredData.map(d => {
-            let brokerAccum = null;
-            if (selectedBroker) {
-                // Find broker value for this date using Map
-                const dayBrokers = brokerDataMap.get(d.date);
-                const dayVal = dayBrokers ? (dayBrokers[selectedBroker] || 0) : 0;
+        // Fast lookup for overlay data
+        const overlayMap = new Map<string, number>();
+        if (brokerOverlayData) {
+            brokerOverlayData.forEach(o => overlayMap.set(o.date, o.value));
+        }
 
-                currentAccum += dayVal;
-                brokerAccum = currentAccum;
-            }
+        return filteredData.map(d => {
+            let brokerAccum = overlayMap.has(d.date) ? overlayMap.get(d.date)! : null;
 
             let bodyMin = Math.min(d.open, d.close);
             let bodyMax = Math.max(d.open, d.close);
@@ -557,60 +608,18 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                 candle_body: [bodyMin, bodyMax],
                 broker_accum: brokerAccum,
                 broker_support: smartSupport, // Inject
+                outstandingShares: outstandingShares || null,
                 ema20: emas?.ema20,
                 ema200: emas?.ema200
             };
         });
-    }, [filteredData, data, selectedBroker, brokerDataMap, brokerSupportMap]);
+    }, [filteredData, data, selectedBroker, brokerDataMap, brokerSupportMap, outstandingShares]);
 
     const timeframes = ["5", "20", "40", "60", "80", "100", "150", "200"];
 
     // Calculate Support/Resistance using Fractal Logic on the visible range
     // Note: calculateDynamicLevels internally uses the whole dataset or filtered set
     const { support, resistance } = useMemo(() => calculateDynamicLevels(filteredData), [filteredData]);
-
-    // Calculate Cumulative Broker Data for Overlay
-
-    // Calculate Cumulative Broker Data for Overlay
-    const brokerOverlayData = useMemo(() => {
-        // We use filteredData to ensure we match the visible chart logic if needed, 
-        // but typically accumulation needs to be from start of time or start of dataset. 
-        // Let's use 'data' (full range) for accumulation calc, but slice for domain.
-        // Priority: Foreign Only > Selected Broker
-        if (showForeignOnly) {
-            let accum = 0;
-            return data.map(item => {
-                const val = item.net_foreign || 0;
-                accum += val;
-                return { date: item.date, value: accum };
-            });
-        }
-
-        if (!selectedBroker || !brokers) return null;
-
-        // Create a map of date -> value for selected broker from history
-        const brokerMap = new Map<string, number>();
-
-        // Sort brokers by date ascending to calc accum
-        const sortedHistory = [...brokers].sort((a, b) => a.date.localeCompare(b.date));
-
-        let cumulative = 0;
-        sortedHistory.forEach(day => {
-            const val = day.brokers[selectedBroker] || 0;
-            cumulative += val;
-            brokerMap.set(day.date, cumulative);
-        });
-
-        // Map to chart data dates
-        return data.map(item => {
-            // If we have exact date match, use it. 
-            // If not, use the last known cumulative value (or 0 if before start)
-            // Since sortedHistory might differ from chart frame.
-            // Simplified: use exact match or undefined
-            const val = brokerMap.get(item.date);
-            return { date: item.date, value: val };
-        });
-    }, [selectedBroker, brokers, data, showForeignOnly]);
 
     // Compute domain for the secondary axis (Broker Accum)
     const brokerDomain = useMemo(() => {
@@ -757,7 +766,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
 
 
                                 <Tooltip
-                                    content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="main" />}
+                                    content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="main" outstandingShares={outstandingShares} />}
                                     cursor={{ stroke: '#666', strokeWidth: 1, strokeDasharray: '3 3' }}
                                 />
 
@@ -817,6 +826,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                                         type="monotone"
                                         dataKey={(item: any) => {
                                             // Find the corresponding broker value for the current item.date
+                                            // The overlay data is already precalculated with the running accumulation
                                             const b = brokerOverlayData.find(b => b.date === item.date);
                                             return b ? b.value : null;
                                         }}
@@ -824,7 +834,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                                         strokeWidth={2}
                                         dot={false}
                                         activeDot={{ r: 4 }}
-                                        name={showForeignOnly ? "Foreign Accum" : (selectedBroker || "")}
+                                        name={selectedBroker ? selectedBroker : (showForeignOnly ? "Foreign Accum" : "")}
                                         isAnimationActive={false}
                                     />
                                 )}
@@ -970,7 +980,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                         >
                             <XAxis dataKey="date" hide />
                             <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 9 }} tickFormatter={(v: number) => (v / 1_000_000).toFixed(0) + "M"} />
-                            <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="volume" />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+                            <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="volume" outstandingShares={outstandingShares} />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
                             <Bar yAxisId="vol" dataKey="volume" opacity={0.8} isAnimationActive={false}>
                                 {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.close >= entry.open ? "#22c55e" : "#ef4444"} />
@@ -1002,7 +1012,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                             <XAxis dataKey="date" hide />
                             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
                             <YAxis yAxisId="foreign" orientation="right" tick={{ fontSize: 9 }} tickFormatter={(v: number) => (v / 1_000_000_000).toFixed(0) + "B"} />
-                            <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="foreign" />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+                            <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="foreign" outstandingShares={outstandingShares} />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
                             <ReferenceLine yAxisId="foreign" y={0} stroke="#666" strokeOpacity={0.5} />
                             <Bar yAxisId="foreign" dataKey="net_foreign" isAnimationActive={false}>
                                 {chartData.map((entry, index) => (
@@ -1035,7 +1045,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
                                     <XAxis dataKey="date" hide />
 
-                                    <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="rsi" />} cursor={{ stroke: '#666', strokeDasharray: '3 3' }} />
+                                    <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="rsi" outstandingShares={outstandingShares} />} cursor={{ stroke: '#666', strokeDasharray: '3 3' }} />
                                     <YAxis domain={[0, 100]} orientation="right" tick={{ fontSize: 10 }} ticks={[30, 50, 70]} />
                                     <ReferenceLine y={70} stroke="red" strokeDasharray="3 3" opacity={0.5} />
                                     <ReferenceLine y={30} stroke="green" strokeDasharray="3 3" opacity={0.5} />
@@ -1073,7 +1083,7 @@ export function TechnicalChart({ data, symbol, brokers = [], className, mainChar
                                         minTickGap={30}
                                     />
 
-                                    <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="macd" />} cursor={{ stroke: '#666', strokeDasharray: '3 3' }} />
+                                    <Tooltip content={(props: any) => <CustomTooltipWrapper {...props} activeChartId={activeChartId} ownId="macd" outstandingShares={outstandingShares} />} cursor={{ stroke: '#666', strokeDasharray: '3 3' }} />
                                     <YAxis orientation="right" tick={{ fontSize: 10 }} />
                                     <ReferenceLine y={0} stroke="#666" opacity={0.3} />
                                     <Bar dataKey="macd_hist" fill="#94a3b8" barSize={2} isAnimationActive={false} />

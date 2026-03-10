@@ -8,7 +8,8 @@ import {
     List,
     BarChart2,
     TrendingUp,
-    Users
+    Users,
+    Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,7 @@ export function Sidebar() {
             <>
                 <NavItem href="/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.9} />} tooltip="Dashboard" />
                 <NavItem href="/analysis/technical" icon={<BarChart2 size={18} strokeWidth={1.9} />} tooltip="Technical Analysis" />
+                <NavItem href="/analysis/net-pressure" icon={<Activity size={18} strokeWidth={1.9} />} tooltip="Net Pressure" />
                 <NavItem href="/analysis/fundamental" icon={<TrendingUp size={18} strokeWidth={1.9} />} tooltip="Fundamental Analysis" />
                 <NavItem href="/analysis/ownership" icon={<Users size={18} strokeWidth={1.9} />} tooltip="Ownership Analysis" />
 

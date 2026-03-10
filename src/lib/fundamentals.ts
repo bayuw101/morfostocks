@@ -178,6 +178,10 @@ export async function loadFundamental(symbol: string): Promise<FundamentalData |
     const asset_turnover = assetToMeta.value;
     const inventory_turnover = invToMeta.value;
 
+    // Extract Outstanding Shares from stats block (not allItems)
+    const rawShares = json.data?.stats?.current_share_outstanding || null;
+    const current_share_outstanding = rawShares ? parseValue(rawShares) : 0;
+
     // Intrinsic Value (Graham Number)
     let graham_number = 0;
     if (eps > 0 && bvps > 0) {
@@ -216,6 +220,7 @@ export async function loadFundamental(symbol: string): Promise<FundamentalData |
       graham_number,
       asset_turnover,
       inventory_turnover,
+      current_share_outstanding,
       _missingFlags: missingFlags,
     };
 

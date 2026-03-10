@@ -288,6 +288,118 @@ export async function syncSymbolOhlcAction(
     }
 }
 
+type StockLinerKey = "first_liner" | "second_liner" | "third_liner";
+
+const LINER_FIRST_THRESHOLD = 100_000_000_000;
+const LINER_SECOND_THRESHOLD = 20_000_000_000;
+const LINER_SAMPLE_DAYS = 5;
+const LINER_LOOKBACK_DAYS = 20;
+
+function classifyLiner(avgTurnover: number): StockLinerKey {
+    if (avgTurnover > LINER_FIRST_THRESHOLD) return "first_liner";
+    if (avgTurnover >= LINER_SECOND_THRESHOLD) return "second_liner";
+    return "third_liner";
+}
+
+export async function syncStockLinerFromRecentOhlcAction() {
+    try {
+        const since = subDays(new Date(), LINER_LOOKBACK_DAYS);
+        const recentRows = await prisma.oHLC.findMany({
+            where: {
+                date: { gte: since },
+                stockSymbol: { not: "IHSG" },
+            },
+            select: {
+                stockSymbol: true,
+                close: true,
+                volume: true,
+                value: true,
+            },
+            orderBy: [
+                { stockSymbol: "asc" },
+                { date: "desc" },
+            ],
+        });
+
+        const sampleBySymbol = new Map<string, { sum: number; count: number }>();
+
+        for (const row of recentRows) {
+            const symbol = row.stockSymbol;
+            const current = sampleBySymbol.get(symbol) ?? { sum: 0, count: 0 };
+            if (current.count >= LINER_SAMPLE_DAYS) continue;
+
+            const turnoverFromValue = Math.max(0, Number(row.value || 0n));
+            const turnoverFromCloseVolume = Math.max(
+                0,
+                Math.round(Number(row.close || 0) * Number(row.volume || 0n))
+            );
+            // Prefer API-provided turnover ("value"), fallback to close*volume only when value is missing.
+            const dailyTurnover = turnoverFromValue > 0 ? turnoverFromValue : turnoverFromCloseVolume;
+
+            current.sum += dailyTurnover;
+            current.count += 1;
+            sampleBySymbol.set(symbol, current);
+        }
+
+        const stockLinerRows = Array.from(sampleBySymbol.entries())
+            .filter(([, sample]) => sample.count > 0)
+            .map(([stockSymbol, sample]) => {
+                const avgDailyTurnover = Math.round(sample.sum / sample.count);
+                return {
+                    stockSymbol,
+                    liner: classifyLiner(avgDailyTurnover),
+                    avgDailyTurnover: BigInt(avgDailyTurnover),
+                    daysSampled: sample.count,
+                };
+            });
+
+        if (stockLinerRows.length === 0) {
+            return {
+                ok: false,
+                error: "No recent OHLC data found to build stock liner classifications.",
+            };
+        }
+
+        await prisma.$transaction([
+            prisma.stockLiner.deleteMany({}),
+            prisma.stockLiner.createMany({
+                data: stockLinerRows,
+            }),
+        ]);
+
+        const counts = stockLinerRows.reduce<Record<StockLinerKey, number>>(
+            (acc, row) => {
+                acc[row.liner as StockLinerKey] += 1;
+                return acc;
+            },
+            {
+                first_liner: 0,
+                second_liner: 0,
+                third_liner: 0,
+            }
+        );
+
+        return {
+            ok: true,
+            total: stockLinerRows.length,
+            counts,
+            sampleDays: LINER_SAMPLE_DAYS,
+            thresholds: {
+                first_liner: `> ${LINER_FIRST_THRESHOLD}`,
+                second_liner: `${LINER_SECOND_THRESHOLD} - ${LINER_FIRST_THRESHOLD}`,
+                third_liner: `< ${LINER_SECOND_THRESHOLD}`,
+            },
+        };
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to initialize stock liner table.";
+        console.error("Failed to sync stock liners:", error);
+        return {
+            ok: false,
+            error: errorMessage,
+        };
+    }
+}
+
 export async function syncBrokerAction(
     brokerCode: string,
     token: string,
@@ -425,7 +537,7 @@ export async function syncBrokerAction(
         await prisma.$transaction(async (tx) => {
             for (const sum of summariesData) {
                 await tx.brokerSummary.upsert({
-                    where: { brokerCode_date_investorType: { brokerCode: sum.brokerCode, date: sum.date, investorType: sum.investorType } },
+                    where: { brokerCode_date_investorType_stockSymbol: { brokerCode: sum.brokerCode, date: sum.date, investorType: sum.investorType, stockSymbol: "" } },
                     update: { value: sum.value, volume: sum.volume, frequency: sum.frequency, bandarDetector: sum.bandarDetector },
                     create: { brokerCode: sum.brokerCode, date: sum.date, investorType: sum.investorType, value: sum.value, volume: sum.volume, frequency: sum.frequency, bandarDetector: sum.bandarDetector }
                 });

@@ -10,12 +10,17 @@ import { loadFundamental, analyzeFundamentalScores } from "@/lib/fundamentals";
 
 const prisma = new PrismaClient();
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ symbol: string }> }
 ) {
     const { symbol: rawSymbol } = await params;
     const symbol = rawSymbol.toUpperCase();
+
+    const { searchParams } = new URL(request.url);
+    const investorType = searchParams.get("type") || "Total";
 
     try {
         // 1. Fetch OHLC data for the chart. Let's get up to 400 days to allow deep zooming
@@ -31,39 +36,70 @@ export async function GET(
 
         // 2. Load Broker History (Top 200 days = safe).
         // Broker table has 'date', 'brokerCode', 'action', 'value'.
-    const recentDates = await prisma.oHLC.findMany({
-      where: { stockSymbol: symbol },
-      orderBy: { date: "desc" },
-      take: 200,
-      select: { date: true }
-    });
-    
-    // Fallback if no dates
-    const oldestDate = recentDates.length > 0 ? recentDates[recentDates.length - 1].date : new Date(0);
+        const recentDates = await prisma.oHLC.findMany({
+            where: { stockSymbol: symbol },
+            orderBy: { date: "desc" },
+            take: 200,
+            select: { date: true }
+        });
 
-    const brokerTransactions = await prisma.brokerTransaction.findMany({
-      where: { 
-        stockSymbol: symbol,
-        date: { gte: oldestDate }
-      },
-    });
+        // Fallback if no dates
+        const oldestDate = recentDates.length > 0 ? recentDates[recentDates.length - 1].date : new Date(0);
 
-    const brokerHistoryMap = new Map<string, Record<string, number>>();
-    for (const tx of brokerTransactions) {
-      const dStr = tx.date.toISOString().split("T")[0];
-      if (!brokerHistoryMap.has(dStr)) brokerHistoryMap.set(dStr, {});
-      
-      const val = Number(tx.value);
-      const isBuy = tx.action === "BUY" || tx.action === "B";
-      const signedVal = isBuy ? val : -val;
+        const brokerTransactions = await prisma.brokerTransaction.findMany({
+            where: {
+                stockSymbol: symbol,
+                date: { gte: oldestDate },
+                investorType: investorType
+            },
+        });
 
-      const current = brokerHistoryMap.get(dStr)![tx.brokerCode] || 0;
-      brokerHistoryMap.get(dStr)![tx.brokerCode] = current + signedVal;
-    }
+        const brokerHistoryMap = new Map<string, Record<string, { lot: number, value: number }>>();
+        for (const tx of brokerTransactions) {
+            const dStr = tx.date.toISOString().split("T")[0];
+            if (!brokerHistoryMap.has(dStr)) brokerHistoryMap.set(dStr, {});
+
+            const isBuy = tx.action === "BUY" || tx.action === "B";
+
+            // Units: Lots (for Chart)
+            let lots = Number(tx.volume);
+            const val = Number(tx.value);
+            const avgPrice = Number(tx.avgPrice);
+
+            // Dynamically detect if Stockbit returned 'volume' as Shares instead of Lots
+            // If val / volume ~= avgPrice * 100, then volume is Lots.
+            // If val / volume ~= avgPrice, then volume is Shares.
+            if (lots > 0 && avgPrice > 0) {
+                const ratio = val / lots;
+                if (ratio < avgPrice * 10) {
+                    // It's in Shares, convert to Lots
+                    lots = lots / 100;
+                }
+            }
+
+            const signedLots = isBuy ? lots : -lots;
+
+            // Units: Value (for Sidebar display)
+            const signedVal = isBuy ? val : -val;
+
+            const current = brokerHistoryMap.get(dStr)![tx.brokerCode] || { lot: 0, value: 0 };
+            brokerHistoryMap.get(dStr)![tx.brokerCode] = {
+                lot: current.lot + signedLots,
+                value: current.value + signedVal
+            };
+
+            // Also track a 'total_net' for this specific investor group (Total or Foreign)
+            const currentTotal = brokerHistoryMap.get(dStr)!["total_net"] || { lot: 0, value: 0 };
+            brokerHistoryMap.get(dStr)!["total_net"] = {
+                lot: currentTotal.lot + signedLots,
+                value: currentTotal.value + signedVal
+            };
+        }
+
 
         // Sort DateBrokerData chronological (Oldest first)
         const brokerHistory = Array.from(brokerHistoryMap.entries())
-            .map(([date, brokers]) => ({ date, brokers }))
+            .map(([date, brokers]) => ({ date, brokers: brokers }))
             .sort((a, b) => a.date.localeCompare(b.date));
 
         // 3. Load Fundamentals
@@ -127,7 +163,8 @@ export async function GET(
             symbol,
             data: merged,
             brokers: brokerHistory,
-            fundamental_scores: fundamentalScores
+            fundamental_scores: fundamentalScores,
+            fundamental_data: fundamentalData
         });
 
     } catch (e: any) {
